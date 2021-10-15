@@ -3,10 +3,24 @@ set -x
 set -e
 set -o pipefail
 
+BUILDROOT=$HOME
+INWORK=false
+if [[ -d /work/$USER ]]
+then
+    echo "Detected /work dir, using that with symlinks to $HOME"
+    INWORK=true
+    BUILDROOT=/work/$USER
+fi
+
+SDIR=$BUILDROOT/$SDIR
+BDIR=$BUILDROOT/$BDIR
+IDIR=$BUILDROOT/$IDIR
+
 echo "Building: SDIR = $SDIR"
 echo "Building: BDIR = $BDIR"
 echo "Building: IDIR = $IDIR"
 echo "Building: $CMAKE_BUILD_TYPE"
+
 
 if [[ -d "$SDIR" ]]
 then
@@ -51,10 +65,21 @@ fi
 
 cd -
 
-rm -rf $BDIR
-mkdir $BDIR
-rm -rf $IDIR
-mkdir $IDIR
+
+if [ "$INWORK" = true ]
+then
+    echo "Hard reset links in $HOME to $BUILDROOT"
+    for DIR in $SDIR $BDIR $IDIR; do
+        rm -rf $HOME/$(basename $DIR)
+        ln -s $DIR $HOME/$(basename $DIR)
+    done
+fi
+
+echo "Clean out build and install directories"
+mkdir -p $BDIR
+rm -rf $BDIR/*
+mkdir -p $IDIR
+rm -rf $IDIR/*
 
 # Aomp tests assume a script in ~ this dir which returns a string for the gfx
 mkdir -p $IDIR/bin
