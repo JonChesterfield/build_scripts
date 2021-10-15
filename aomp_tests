@@ -1,0 +1,77 @@
+#!/bin/bash
+
+ID=`hostname`
+
+RESDIR=/mnt/scratch
+
+if [[ -d "$RESDIR" ]]
+then
+    :
+else
+    RESDIR=$HOME
+fi
+
+echo "Writing results to $RESDIR"
+
+OUT=/tmp/run_tests.out
+ERR=/tmp/run_tests.err
+
+FOUT="$RESDIR"/"$ID"_run_tests.out
+FERR="$RESDIR"/"$ID"_run_tests.err
+
+rm -f $OUT $ERR $FOUT $FERR
+
+function dump() {
+    echo $1
+    echo $1 >> $OUT
+    echo $1 >> $ERR
+}
+
+export AOMP=~/rocm/aomp
+export AOMP=$HOME/llvm-install
+
+export SRCDIR=~/aomp/aomp
+export LD_LIBRARY_PATH=$AOMP/lib/
+
+# temporary, probably
+# export ROCM_LLC_ARGS="--amdhsa-code-object-version=4"
+# export CCC_OVERRIDE_OPTIONS="+-mcode-object-version=4"
+# export CCC_OVERRIDE_OPTIONS="+-mllvm +--amdhsa-code-object-version=4"
+
+# makes failures more obvious
+export OMP_TARGET_OFFLOAD=MANDATORY
+
+export SKIP_FORTRAN=1
+
+# req for rocm 4.1 on all upstream amdkfd
+export HSA_IGNORE_SRAMECC_MISREPORT=1
+
+touch $OUT
+touch $ERR
+
+cd $SRCDIR/test/smoke
+dump "smoke"
+./check_smoke.sh 1>> $OUT 2>> $ERR
+
+cd $SRCDIR/test/hip-openmp
+dump "hip-openmp"
+cd matrixmul_omp_copy
+make clean 1>> $OUT 2>> $ERR
+make run 1>> $OUT 2>> $ERR
+# ./check_hip-openmp.sh 1>> $OUT 2>> $ERR # most of these fail at present
+
+cd $SRCDIR/examples
+./check_examples.sh 1>> $OUT 2>> $ERR
+
+export OMPIDIR=/usr/include/mpich
+cd ~/aomp-test/openmpapps
+dump "openmpapps"
+./check_openmpapps.sh 1>> $OUT 2>> $ERR
+
+dump "Complete"
+
+mv $OUT $FOUT
+mv $ERR $FERR
+
+exit 0
+
