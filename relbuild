@@ -6,4 +6,4 @@ BDIR=~/llvm-build
 
 CMAKE_BUILD_TYPE="-DCMAKE_BUILD_TYPE=Release"
 
-. common_build.sh
+. common_build
