@@ -1,0 +1,9 @@
+#!/bin/bash
+
+SDIR=~/llvm-project
+IDIR=~/llvm-install-debug
+BDIR=~/llvm-build-debug
+
+CMAKE_BUILD_TYPE="-DCMAKE_BUILD_TYPE=Debug"
+
+. common_build.sh
