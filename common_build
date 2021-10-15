@@ -13,7 +13,7 @@ then
     echo "Using existing llvm project"
 else
     echo "Clone llvm into $SDIR"
-    git clone git@github.com:llvm/llvm-project.git $SDIR
+    git clone https://github.com/llvm/llvm-project.git $SDIR
 fi
 
 cd $SDIR
@@ -22,14 +22,14 @@ if [[ -d "ROCT-Thunk-Interface" ]]
 then
     echo "Using existing roct"
 else
-    git clone git@github.com:RadeonOpenCompute/ROCT-Thunk-Interface.git -b roc-4.2.x
+    git clone https://github.com/RadeonOpenCompute/ROCT-Thunk-Interface.git -b roc-4.2.x
 fi
 
 if [[ -d "ROCR-Runtime" ]]
 then
     echo "Using existing rocr"
 else
-    git clone git@github.com:RadeonOpenCompute/ROCR-Runtime.git -b rocm-4.2.x
+    git clone https://github.com/RadeonOpenCompute/ROCR-Runtime.git -b rocm-4.2.x
     # This can be disabled by environment variable, but LLVM's testing does not pass that
     # environment variable along. So clobber it in the source directly.
     sed -i 's/os::GetEnvVar("HSA_IGNORE_SRAMECC_MISREPORT")/"1"/' ROCR-Runtime/src/core/util/flag.h
@@ -39,7 +39,7 @@ if [[ -d "ROCm-Device-Libs" ]]
 then
     echo "Using existing device libs"
 else
-    git clone git@github.com:RadeonOpenCompute/ROCm-Device-Libs.git -b roc-4.2.x
+    git clone https://github.com/RadeonOpenCompute/ROCm-Device-Libs.git -b roc-4.2.x
     sed -i 's$add_subdirectory(opencl)$# add_subdirectory(opencl)$g' ROCm-Device-Libs/CMakeLists.txt
     sed -i 's$sys::fs::F_None$sys::fs::OF_None$' ROCm-Device-Libs/utils/prepare-builtins/prepare-builtins.cpp
     rm -f ROCm-Device-Libs/ockl/src/dots.cl # doesn't build
