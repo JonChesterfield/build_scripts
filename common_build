@@ -89,7 +89,7 @@ chmod +x $IDIR/bin/mygpu
 
 # todo: actually compute it, possibly based on available ram
 
-CMAKE_COMMON="-DCMAKE_C_COMPILER=`which gcc` -DCMAKE_CXX_COMPILER=`which g++` -DCMAKE_INSTALL_PREFIX=$IDIR -DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_PARALLEL_LINK_JOBS=$(( ($(nproc) + 3)/4 )) "
+CMAKE_COMMON="-DCMAKE_C_COMPILER=`which gcc` -DCMAKE_CXX_COMPILER=`which g++` -DCMAKE_INSTALL_PREFIX=$IDIR -DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_PARALLEL_LINK_JOBS=$(( ($(nproc) + 7)/8 )) "
 
 cd $BDIR
 rm -rf roct && mkdir roct && cd roct
@@ -135,6 +135,9 @@ cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
       -DLIBOMPTARGET_FORCE_DLOPEN_LIBCUDA=FALSE \
       -DLIBOMPTARGET_FORCE_DLOPEN_LIBHSA=FALSE \
       -DLIBOMPTARGET_BUILD_NVPTX_BCLIB=TRUE \
+      -DLIBOMPTARGET_BUILD_AMDGPU_BCLIB=TRUE \
+      -DLIBOMPTARGET_BUILD_CUDA_PLUGIN=TRUE \
+      -DLIBOMPTARGET_BUILD_AMDGPU_PLUGIN=TRUE \
       -DLLVM_ENABLE_RUNTIMES="openmp" \
       -GNinja
 
@@ -143,12 +146,11 @@ BUILDTOOL="ninja"
 
 $BUILDTOOL
 
-# libomptarget tests use a weird LD_LIBRARY_PATH, put a link to libhsa next to the place
-# they look for a libomp.so
+# libomptarget tests no longer use LD_LIBRARY_PATH, put a link to libhsa next to the plugin
 
 FROM=$(find $BDIR -iname libhsa-runtime64.so)
-LIBOMP=$(find $BDIR -iname libomp.so)
-echo "Link $FROM to dirname $LIBOMP"
+LIBOMP=$(find $BDIR -iname libomptarget.rtl.amdgpu.so)
+echo "Link hsa $FROM to dirname $LIBOMP"
 TO=$(dirname $LIBOMP)
 ln -s $FROM $TO
 
