@@ -150,10 +150,14 @@ $BUILDTOOL
 
 FROM=$(find $BDIR -iname libhsa-runtime64.so)
 LIBOMP=$(find $BDIR -iname libomptarget.rtl.amdgpu.so)
+if [[ -e $LIBOMP ]]
+then
 echo "Link hsa $FROM to dirname $LIBOMP"
 TO=$(dirname $LIBOMP)
 ln -s $FROM $TO
-
+else
+echo "Can't find libomptarget.rtl.amdgpu.so, don't try to ln hsa"
+fi
 set +e
 $BUILDTOOL check-all 
 set -e
