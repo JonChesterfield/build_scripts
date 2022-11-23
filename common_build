@@ -49,7 +49,7 @@ else
     sed -i 's/os::GetEnvVar("HSA_IGNORE_SRAMECC_MISREPORT")/"1"/' ROCR-Runtime/src/core/util/flag.h
 
     # patch enum
-
+    cd ROCR-Runtime
     cat <<'EOF' | git apply
 diff --git a/src/inc/hsa.h b/src/inc/hsa.h
 index d8fdd47..def0c39 100644
@@ -73,9 +73,8 @@ index d8fdd47..def0c39 100644
 +  HSA_AGENT_INFO_UNUSED_WORKAROUND_D2338 = INT32_MAX
 
  } hsa_agent_info_t;
-
 EOF
-
+    cd --
 fi
 
 if [[ -d "ROCm-Device-Libs" ]]
@@ -90,31 +89,15 @@ else
     #sed -i 's$sys::fs::F_None$sys::fs::OF_None$' ROCm-Device-Libs/utils/prepare-builtins/prepare-builtins.cpp
     #rm -f ROCm-Device-Libs/ockl/src/dots.cl # doesn't build
 
-    #rm -f ROCm-Device-Libs/ockl/src/gaaf.cl # doesn't build
+    rm -f ROCm-Device-Libs/ockl/src/gaaf.cl # doesn't build
 
     #rm -rf ROCm-Device-Libs/hc # several files fail with error: Opaque pointers are only supported in -opaque-pointers mode
-    
 
-        cat <<'EOF' | git apply
-diff --git a/utils/prepare-builtins/CMakeLists.txt b/utils/prepare-builtins/CMakeLists.txt
-index 8f1505f..6366196 100644
---- a/utils/prepare-builtins/CMakeLists.txt
-+++ b/utils/prepare-builtins/CMakeLists.txt
-@@ -22,7 +22,7 @@ endif()
- 
- add_executable(prepare-builtins prepare-builtins.cpp)
- set_target_properties(prepare-builtins PROPERTIES
--  CXX_STANDARD 14
-+  CXX_STANDARD 17
-   CXX_STANDARD_REQUIRED Yes
-   CXX_EXTENSIONS No)
- llvm_update_compile_flags(prepare-builtins)
-EOF
 fi
 
 # amd-stg-open cmake assumes it is called this and up one level
 cd ..
-ln -s ROCm-llvm-project/ROCm-Device-Libs rocm-device-libs
+ln -sf ROCm-llvm-project/ROCm-Device-Libs rocm-device-libs
 
 cd -
 
@@ -187,7 +170,7 @@ cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
       -DENABLE_AMDGPU_ARCH_TOOL=TRUE \
       $CUDA \
       -DLIBOMPTARGET_FORCE_DLOPEN_LIBCUDA=FALSE \
-      -DLIBOMPTARGET_FORCE_DLOPEN_LIBHSA=TRUE \
+      -DLIBOMPTARGET_FORCE_DLOPEN_LIBHSA=FALSE \
       -DLIBOMPTARGET_BUILD_NVPTX_BCLIB=TRUE \
       -DLIBOMPTARGET_BUILD_AMDGPU_BCLIB=TRUE \
       -DLIBOMPTARGET_BUILD_CUDA_PLUGIN=TRUE \
