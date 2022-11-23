@@ -123,9 +123,9 @@ echo '#!/bin/bash' > $IDIR/bin/mygpu
 echo 'echo $('$IDIR'/bin/amdgpu-arch | uniq)' >> $IDIR/bin/mygpu
 chmod +x $IDIR/bin/mygpu
 
-# todo: actually compute it, possibly based on available ram
-
-CMAKE_COMMON="-DCMAKE_C_COMPILER=`which gcc` -DCMAKE_CXX_COMPILER=`which g++` -DCMAKE_INSTALL_PREFIX=$IDIR -DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_PARALLEL_LINK_JOBS=$(( ($(nproc) + 7)/8 )) "
+# todo: actually compute link jobs, possibly based on available ram
+#  -DLLVM_PARALLEL_LINK_JOBS=$(( ($(nproc) + 7)/8 ))
+CMAKE_COMMON="-DCMAKE_C_COMPILER=`which clang` -DCMAKE_CXX_COMPILER=`which clang++` -DCMAKE_INSTALL_PREFIX=$IDIR -DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF -DLLVM_ENABLE_ASSERTIONS=On "
 
 cd $BDIR
 rm -rf roct && mkdir roct && cd roct
@@ -208,6 +208,9 @@ rm -rf devlibs && mkdir devlibs && cd devlibs
 export PATH=$IDIR/bin:$PATH
 cmake $SDIR/ROCm-Device-Libs $CMAKE_COMMON $CMAKE_BUILD_TYPE -GNinja
 $BUILDTOOL && $BUILDTOOL install
+
 # clang doesn't handle ABI breaks in device libs well and rocm doesn't bother with
 # backwards compatibility, may need stuff like:
 # touch /opt/rocm/lib/opencl.bc
+# or
+# ln -s $HOME/llvm-install/amdgcn /opt/rocm/amdgcn
