@@ -98,7 +98,7 @@ fi
 
 # amd-stg-open cmake assumes it is called this and up one level
 cd ..
-ln -sf ROCm-llvm-project/ROCm-Device-Libs rocm-device-libs
+ln -sf llvm-project/ROCm-Device-Libs rocm-device-libs
 
 cd -
 
