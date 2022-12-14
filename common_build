@@ -52,10 +52,10 @@ else
     cd ROCR-Runtime
     cat <<'EOF' | git apply
 diff --git a/src/inc/hsa.h b/src/inc/hsa.h
-index d8fdd47..def0c39 100644
+index fe1facc..9d6cf04 100644
 --- a/src/inc/hsa.h
 +++ b/src/inc/hsa.h
-@@ -998,7 +998,17 @@ typedef enum {
+@@ -1012,7 +1012,17 @@ typedef enum {
     * Minor version of the HSA runtime specification supported by the
     * agent. The type of this attribute is uint16_t.
     */
@@ -71,7 +71,7 @@ index d8fdd47..def0c39 100644
 +   * Thus increase the range of this enum to encompass vendor extensions.
 +   */
 +  HSA_AGENT_INFO_UNUSED_WORKAROUND_D2338 = INT32_MAX
-
+ 
  } hsa_agent_info_t;
 EOF
     cd --
@@ -209,6 +209,7 @@ export PATH=$IDIR/bin:$PATH
 cmake $SDIR/ROCm-Device-Libs $CMAKE_COMMON $CMAKE_BUILD_TYPE -GNinja
 $BUILDTOOL && $BUILDTOOL install
 
+touch $IDIR/amdgcn/bitcode/opencl.bc
 # clang doesn't handle ABI breaks in device libs well and rocm doesn't bother with
 # backwards compatibility, may need stuff like:
 # touch /opt/rocm/lib/opencl.bc
