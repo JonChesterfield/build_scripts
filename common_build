@@ -36,14 +36,14 @@ if [[ -d "ROCT-Thunk-Interface" ]]
 then
     echo "Using existing roct"
 else
-    git clone https://github.com/RadeonOpenCompute/ROCT-Thunk-Interface.git -b roc-4.5.x
+    git clone https://github.com/RadeonOpenCompute/ROCT-Thunk-Interface.git -b roc-5.2.x
 fi
 
 if [[ -d "ROCR-Runtime" ]]
 then
     echo "Using existing rocr"
 else
-    git clone https://github.com/RadeonOpenCompute/ROCR-Runtime.git -b rocm-4.5.x
+    git clone https://github.com/RadeonOpenCompute/ROCR-Runtime.git -b rocm-5.2.x
     # This can be disabled by environment variable, but LLVM's testing does not pass that
     # environment variable along. So clobber it in the source directly.
     sed -i 's/os::GetEnvVar("HSA_IGNORE_SRAMECC_MISREPORT")/"1"/' ROCR-Runtime/src/core/util/flag.h
@@ -73,6 +73,7 @@ index fe1facc..9d6cf04 100644
 +  HSA_AGENT_INFO_UNUSED_WORKAROUND_D2338 = INT32_MAX
  
  } hsa_agent_info_t;
+ 
 EOF
     cd --
 fi
