@@ -21,6 +21,8 @@ echo "Building: BDIR = $BDIR"
 echo "Building: IDIR = $IDIR"
 echo "Building: $CMAKE_BUILD_TYPE"
 
+BUILDTOOL="make -j`nproc`"
+BUILDTOOL="ninja"
 
 if [[ -d "$SDIR" ]]
 then
@@ -126,11 +128,33 @@ chmod +x $IDIR/bin/mygpu
 
 # todo: actually compute link jobs, possibly based on available ram
 #  -DLLVM_PARALLEL_LINK_JOBS=$(( ($(nproc) + 7)/8 ))
-CMAKE_COMMON="-DCMAKE_C_COMPILER=`which clang` -DCMAKE_CXX_COMPILER=`which clang++` -DCMAKE_INSTALL_PREFIX=$IDIR -DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF -DLLVM_ENABLE_ASSERTIONS=On "
+CMAKE_COMMON="-DCMAKE_C_COMPILER=`which clang` -DCMAKE_CXX_COMPILER=`which clang++` -DCMAKE_INSTALL_PREFIX=$IDIR -DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF -DLLVM_ENABLE_ASSERTIONS=On -DCMAKE_VERBOSE_MAKEFILE=1 "
+
+
+
+# Need to build clang before HSA these days.
+cd $BDIR 
+rm -rf llvm && mkdir llvm
+cd llvm
+
+cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
+      -DLLVM_ENABLE_PROJECTS="clang;lld" \
+      -DOPENMP_ENABLE_LIBOMPTARGET_HSA=TRUE \
+      -GNinja
+
+$BUILDTOOL
+$BUILDTOOL install
+
+
+# HSA contains cmake for trap_handler which doesn't honour compiler flags and expects
+# a prefix path with /llvm on it, despite llvm not installing under a tree that looks like that
+# Also it looks like it has a copy/paste bug for the find_package for clang. Trying PATH.
+
+export PATH=$IDIR/bin:$PATH
 
 cd $BDIR
 rm -rf roct && mkdir roct && cd roct
-cmake $SDIR/ROCT-Thunk-Interface/ $CMAKE_COMMON $CMAKE_BUILD_TYPE -DBUILD_SHARED_LIBS=OFF
+cmake $SDIR/ROCT-Thunk-Interface/ $CMAKE_COMMON $CMAKE_BUILD_TYPE -DCMAKE_C_COMPILER="$IDIR/bin/clang" -DCMAKE_CXX_COMPILER="$IDIR/bin/clang++" -DBUILD_SHARED_LIBS=OFF
 make -j `nproc` && make -j `nproc` install
 
 # cmake doesn't build both static and shared but could do so separately
@@ -138,13 +162,15 @@ make -j `nproc` && make -j `nproc` install
 # tests can find it which we don't want to do with a static build
 cd $BDIR
 rm -rf rocr && mkdir rocr && cd rocr
-cmake $SDIR/ROCR-Runtime/src/ -DIMAGE_SUPPORT=OFF $CMAKE_COMMON $CMAKE_BUILD_TYPE -DBUILD_SHARED_LIBS=ON
+cmake $SDIR/ROCR-Runtime/src/ -DIMAGE_SUPPORT=OFF $CMAKE_COMMON $CMAKE_BUILD_TYPE -DCMAKE_C_COMPILER="$IDIR/bin/clang" -DCMAKE_CXX_COMPILER="$IDIR/bin/clang++" -DBUILD_SHARED_LIBS=ON
 make -j `nproc` && make -j `nproc` install
 
 
+# Delete the clang we used to build hsa, need to run cmake again. Hopefully that won't burn us.
 cd $BDIR 
 rm -rf llvm && mkdir llvm
 cd llvm
+
 # -DLIBOMPTARGET_BUILD_NVPTX_BCLIB=TRUE # useful on wx, breaks build on r7
 
 if [[ -d "/usr/local/cuda-11" ]]
@@ -178,9 +204,6 @@ cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
       -DLIBOMPTARGET_BUILD_AMDGPU_PLUGIN=TRUE \
       -DLLVM_ENABLE_RUNTIMES="openmp" \
       -GNinja
-
-BUILDTOOL="make -j`nproc`"
-BUILDTOOL="ninja"
 
 $BUILDTOOL
 
