@@ -3,18 +3,45 @@ set -x
 set -e
 set -o pipefail
 
+# Default is everything in home
 BUILDROOT=$HOME
+
+ARGSDIR=$SDIR
+ARGBDIR=$BDIR
+ARGIDIR=$IDIR
+
+SDIR=$BUILDROOT/$ARGSDIR
+BDIR=$BUILDROOT/$ARGBDIR
+IDIR=$BUILDROOT/$ARGIDIR
+
+
+# If scratch exists, put the build files there
+INSCRATCH=false
+if [[ -d /scratch/$USER ]]
+then
+    INSCRATCH=true
+    BUILDROOT=/scratch/$USER
+
+    BDIR=$BUILDROOT/$ARGBDIR
+    # IDIR=$BUILDROOT/$IDIR # undecided
+fi
+
+
+# If this directory exists, put everything there instead
 INWORK=false
 if [[ -d /work/$USER ]]
 then
     echo "Detected /work dir, using that with symlinks to $HOME"
     INWORK=true
+    INSCRATCH=false
     BUILDROOT=/work/$USER
+
+    SDIR=$BUILDROOT/$ARGSDIR
+    BDIR=$BUILDROOT/$ARGBDIR
+    IDIR=$BUILDROOT/$ARGIDIR
 fi
 
-SDIR=$BUILDROOT/$SDIR
-BDIR=$BUILDROOT/$BDIR
-IDIR=$BUILDROOT/$IDIR
+
 
 echo "Building: SDIR = $SDIR"
 echo "Building: BDIR = $BDIR"
@@ -90,7 +117,7 @@ else
     git clone https://github.com/RadeonOpenCompute/ROCm-Device-Libs.git -b amd-stg-open
     #sed -i 's$add_subdirectory(opencl)$# add_subdirectory(opencl)$g' ROCm-Device-Libs/CMakeLists.txt
     #sed -i 's$sys::fs::F_None$sys::fs::OF_None$' ROCm-Device-Libs/utils/prepare-builtins/prepare-builtins.cpp
-    #rm -f ROCm-Device-Libs/ockl/src/dots.cl # doesn't build
+    rm -f ROCm-Device-Libs/ockl/src/dots.cl # doesn't build
 
     rm -f ROCm-Device-Libs/ockl/src/gaaf.cl # doesn't build
 
@@ -99,11 +126,21 @@ else
 fi
 
 # amd-stg-open cmake assumes it is called this and up one level
-cd ..
-ln -sf llvm-project/ROCm-Device-Libs rocm-device-libs
+# hopefully no longer true as it's annoying to set up
 
+cd ..
+# ln -sf llvm-project/ROCm-Device-Libs rocm-device-libs
 cd -
 
+
+if [ "$INSCRATCH" = true ]
+then
+    echo "Hard reset some links in $HOME to $BUILDROOT"
+    for DIR in $BDIR; do
+        rm -rf $HOME/$(basename $DIR)
+        ln -sf $DIR $HOME/$(basename $DIR)
+    done
+fi
 
 if [ "$INWORK" = true ]
 then
@@ -145,6 +182,7 @@ cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
 $BUILDTOOL
 $BUILDTOOL install
 
+echo "Built and installed clang once"
 
 # HSA contains cmake for trap_handler which doesn't honour compiler flags and expects
 # a prefix path with /llvm on it, despite llvm not installing under a tree that looks like that
@@ -152,6 +190,7 @@ $BUILDTOOL install
 
 export PATH=$IDIR/bin:$PATH
 
+echo "Try to build ROCT"
 cd $BDIR
 rm -rf roct && mkdir roct && cd roct
 cmake $SDIR/ROCT-Thunk-Interface/ $CMAKE_COMMON $CMAKE_BUILD_TYPE -DCMAKE_C_COMPILER="$IDIR/bin/clang" -DCMAKE_CXX_COMPILER="$IDIR/bin/clang++" -DBUILD_SHARED_LIBS=OFF
@@ -160,10 +199,19 @@ make -j `nproc` && make -j `nproc` install
 # cmake doesn't build both static and shared but could do so separately
 # there's some commented out logic below for putting a link to the .so where
 # tests can find it which we don't want to do with a static build
+echo "Try to build ROCR"
 cd $BDIR
 rm -rf rocr && mkdir rocr && cd rocr
 cmake $SDIR/ROCR-Runtime/src/ -DIMAGE_SUPPORT=OFF $CMAKE_COMMON $CMAKE_BUILD_TYPE -DCMAKE_C_COMPILER="$IDIR/bin/clang" -DCMAKE_CXX_COMPILER="$IDIR/bin/clang++" -DBUILD_SHARED_LIBS=ON
 make -j `nproc` && make -j `nproc` install
+
+
+# libc hardcodes the wrong path to hsa, try to hack around that
+cd $IDIR/include/hsa
+mkdir hsa
+cd hsa
+ln -s ../* .
+rm hsa
 
 
 # Delete the clang we used to build hsa, need to run cmake again. Hopefully that won't burn us.
@@ -192,7 +240,10 @@ fi
 #      -DDEVICELIBS_ROOT=$SDIR/ROCm-Device-Libs probably don't need this
 
 cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
-      -DLLVM_ENABLE_PROJECTS="clang;lld" \
+      -DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt" \
+      -DLLVM_ENABLE_RUNTIMES="libc;openmp" \
+      -DLLVM_ENABLE_ZLIB=OFF \
+      -DLLVM_ENABLE_TERMINFO=OFF \
       -DOPENMP_ENABLE_LIBOMPTARGET_HSA=TRUE \
       -DENABLE_AMDGPU_ARCH_TOOL=TRUE \
       $CUDA \
@@ -202,7 +253,9 @@ cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
       -DLIBOMPTARGET_BUILD_AMDGPU_BCLIB=TRUE \
       -DLIBOMPTARGET_BUILD_CUDA_PLUGIN=TRUE \
       -DLIBOMPTARGET_BUILD_AMDGPU_PLUGIN=TRUE \
-      -DLLVM_ENABLE_RUNTIMES="openmp" \
+      -DLLVM_LIBC_FULL_BUILD=ON \
+      -DLIBC_GPU_BUILD=ON \
+      -DLLVM_LIBC_GPU_ARCHITECTURES=all \
       -GNinja
 
 $BUILDTOOL
@@ -219,6 +272,9 @@ ln -sf $FROM $TO
 else
 echo "Can't find libomptarget.rtl.amdgpu.so, don't try to ln hsa"
 fi
+
+
+
 set +e
 $BUILDTOOL check-all 
 set -e
@@ -238,3 +294,5 @@ touch $IDIR/amdgcn/bitcode/opencl.bc
 # touch /opt/rocm/lib/opencl.bc
 # or
 # ln -s $HOME/llvm-install/amdgcn /opt/rocm/amdgcn
+
+
