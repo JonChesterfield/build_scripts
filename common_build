@@ -253,6 +253,7 @@ cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
       -DLIBOMPTARGET_BUILD_AMDGPU_BCLIB=TRUE \
       -DLIBOMPTARGET_BUILD_CUDA_PLUGIN=TRUE \
       -DLIBOMPTARGET_BUILD_AMDGPU_PLUGIN=TRUE \
+      -DLIBOMPTARGET_FORCE_AMDGPU_TESTS=TRUE \
       -DLLVM_LIBC_FULL_BUILD=ON \
       -DLIBC_GPU_BUILD=ON \
       -DLLVM_LIBC_GPU_ARCHITECTURES=all \
@@ -280,6 +281,13 @@ $BUILDTOOL check-all
 set -e
 $BUILDTOOL install # often want install to succeed even if tests dont
 
+# device libs is not building again. to hell with it
+
+mkdir -p $IDIR/amdgcn/bitcode
+touch $IDIR/amdgcn/bitcode/opencl.bc
+
+exit 0
+
 # device libs needs a recent llvm and doesn't honour cmake configuration
 # it will use whatever clang find_package returns, and one place that looks is the path
 cd $BDIR
@@ -288,7 +296,7 @@ export PATH=$IDIR/bin:$PATH
 cmake $SDIR/ROCm-Device-Libs $CMAKE_COMMON $CMAKE_BUILD_TYPE -GNinja
 $BUILDTOOL && $BUILDTOOL install
 
-touch $IDIR/amdgcn/bitcode/opencl.bc
+
 # clang doesn't handle ABI breaks in device libs well and rocm doesn't bother with
 # backwards compatibility, may need stuff like:
 # touch /opt/rocm/lib/opencl.bc
