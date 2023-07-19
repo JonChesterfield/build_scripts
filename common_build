@@ -187,14 +187,13 @@ mkdir -p include
 cp -r $SDIR/dynamic_hsa/include/* include/
 
 # libc checks CMAKE_INSTALL_PREFIX looking for hsa, pretend there is one there
-cd $IDIR
-mkdir -p llvm
-mkdir -p lib
-mkdir -p includes
-mkdir -p lib/cmake
-mkdir -p lib/cmake/hsa-runtime64
-cp -r $SDIR/dynamic_hsa/lib/cmake/hsa-runtime64/* lib/cmake/hsa-runtime64/
-cd $BDIR/llvm
+#cd $IDIR
+#mkdir -p llvm
+#mkdir -p lib
+#mkdir -p lib/cmake
+#mkdir -p lib/cmake/hsa-runtime64
+#cp -r $SDIR/dynamic_hsa/lib/cmake/hsa-runtime64/* lib/cmake/hsa-runtime64/
+#cd $BDIR/llvm
 
 # -DLIBOMPTARGET_BUILD_NVPTX_BCLIB=TRUE # useful on wx, breaks build on r7
 
