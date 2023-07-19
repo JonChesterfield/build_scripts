@@ -125,6 +125,14 @@ else
 
 fi
 
+if [[ -d "dynamic_hsa" ]]
+then
+    echo "Using existing dynamic hsa"
+else
+    git clone https://github.com/JonChesterfield/dynamic_hsa.git
+fi
+
+
 # amd-stg-open cmake assumes it is called this and up one level
 # hopefully no longer true as it's annoying to set up
 
@@ -169,55 +177,24 @@ CMAKE_COMMON="-DCMAKE_C_COMPILER=`which clang` -DCMAKE_CXX_COMPILER=`which clang
 
 
 
-# Need to build clang before HSA these days.
 cd $BDIR 
-rm -rf llvm && mkdir llvm
-cd llvm
 
-cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
-      -DLLVM_ENABLE_PROJECTS="clang;lld" \
-      -DOPENMP_ENABLE_LIBOMPTARGET_HSA=TRUE \
-      -GNinja
+# LLvm time
+rm -rf llvm && mkdir llvm && cd llvm
 
-$BUILDTOOL
-$BUILDTOOL install
+# Create a HSA instance of sorts
+mkdir -p include
+cp -r $SDIR/dynamic_hsa/include/* include/
 
-echo "Built and installed clang once"
-
-# HSA contains cmake for trap_handler which doesn't honour compiler flags and expects
-# a prefix path with /llvm on it, despite llvm not installing under a tree that looks like that
-# Also it looks like it has a copy/paste bug for the find_package for clang. Trying PATH.
-
-export PATH=$IDIR/bin:$PATH
-
-echo "Try to build ROCT"
-cd $BDIR
-rm -rf roct && mkdir roct && cd roct
-cmake $SDIR/ROCT-Thunk-Interface/ $CMAKE_COMMON $CMAKE_BUILD_TYPE -DCMAKE_C_COMPILER="$IDIR/bin/clang" -DCMAKE_CXX_COMPILER="$IDIR/bin/clang++" -DBUILD_SHARED_LIBS=OFF
-make -j `nproc` && make -j `nproc` install
-
-# cmake doesn't build both static and shared but could do so separately
-# there's some commented out logic below for putting a link to the .so where
-# tests can find it which we don't want to do with a static build
-echo "Try to build ROCR"
-cd $BDIR
-rm -rf rocr && mkdir rocr && cd rocr
-cmake $SDIR/ROCR-Runtime/src/ -DIMAGE_SUPPORT=OFF $CMAKE_COMMON $CMAKE_BUILD_TYPE -DCMAKE_C_COMPILER="$IDIR/bin/clang" -DCMAKE_CXX_COMPILER="$IDIR/bin/clang++" -DBUILD_SHARED_LIBS=ON
-make -j `nproc` && make -j `nproc` install
-
-
-# libc hardcodes the wrong path to hsa, try to hack around that
-cd $IDIR/include/hsa
-mkdir hsa
-cd hsa
-ln -s ../* .
-rm hsa
-
-
-# Delete the clang we used to build hsa, need to run cmake again. Hopefully that won't burn us.
-cd $BDIR 
-rm -rf llvm && mkdir llvm
-cd llvm
+# libc checks CMAKE_INSTALL_PREFIX looking for hsa, pretend there is one there
+cd $IDIR
+mkdir -p llvm
+mkdir -p lib
+mkdir -p includes
+mkdir -p lib/cmake
+mkdir -p lib/cmake/hsa-runtime64
+cp -r $SDIR/dynamic_hsa/lib/cmake/hsa-runtime64/* lib/cmake/hsa-runtime64/
+cd $BDIR/llvm
 
 # -DLIBOMPTARGET_BUILD_NVPTX_BCLIB=TRUE # useful on wx, breaks build on r7
 
@@ -256,10 +233,55 @@ cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
       -DLIBOMPTARGET_FORCE_AMDGPU_TESTS=TRUE \
       -DLLVM_LIBC_FULL_BUILD=ON \
       -DLIBC_GPU_BUILD=ON \
-      -DLLVM_LIBC_GPU_ARCHITECTURES=all \
+      -DLIBC_GPU_ARCHITECTURES=gfx1010 \
+      -DLIBC_GPU_TEST_ARCHITECTURE=gfx1010 \
       -GNinja
 
 $BUILDTOOL
+
+set +e
+$BUILDTOOL check-all 
+set -e
+$BUILDTOOL install # often want install to succeed even if tests dont
+
+# HSA contains cmake for trap_handler which doesn't honour compiler flags and expects
+# a prefix path with /llvm on it, despite llvm not installing under a tree that looks like that
+# Also it looks like it has a copy/paste bug for the find_package for clang. Trying PATH.
+
+export PATH=$IDIR/bin:$PATH
+
+echo "Try to build ROCT"
+cd $BDIR
+rm -rf roct && mkdir roct && cd roct
+cmake $SDIR/ROCT-Thunk-Interface/ $CMAKE_COMMON $CMAKE_BUILD_TYPE -DBUILD_SHARED_LIBS=OFF
+make -j `nproc` && make -j `nproc` install
+
+# cmake doesn't build both static and shared but could do so separately
+# there's some commented out logic below for putting a link to the .so where
+# tests can find it which we don't want to do with a static build
+# clang doesn't work with cmake
+echo "Try to build ROCR"
+cd $BDIR
+rm -rf rocr && mkdir rocr && cd rocr
+#  -DCMAKE_C_COMPILER="$IDIR/bin/clang" -DCMAKE_CXX_COMPILER="$IDIR/bin/clang++"
+cmake $SDIR/ROCR-Runtime/src/ -DIMAGE_SUPPORT=OFF $CMAKE_COMMON $CMAKE_BUILD_TYPE -DBUILD_SHARED_LIBS=ON
+make -j `nproc` && make -j `nproc` install
+
+
+# HSA has just put dangling links in the build tree. That upsets anything that tries to use it.
+rm $BDIR/llvm/lib/libhsa-runtime64*
+cd $BDIR/llvm/lib
+ln -s $IDIR/lib/libhsa-runtime64.so .
+cd -
+
+# libc hardcodes the wrong path to hsa, try to hack around that
+cd $IDIR/include/hsa
+mkdir hsa
+cd hsa
+ln -s ../* .
+rm hsa
+
+
 
 # libomptarget tests no longer use LD_LIBRARY_PATH, put a link to libhsa next to the plugin
 
@@ -274,12 +296,6 @@ else
 echo "Can't find libomptarget.rtl.amdgpu.so, don't try to ln hsa"
 fi
 
-
-
-set +e
-$BUILDTOOL check-all 
-set -e
-$BUILDTOOL install # often want install to succeed even if tests dont
 
 # device libs is not building again. to hell with it
 
