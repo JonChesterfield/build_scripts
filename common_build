@@ -234,12 +234,14 @@ cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
       -DLIBC_GPU_BUILD=ON \
       -DLIBC_GPU_ARCHITECTURES=gfx1010 \
       -DLIBC_GPU_TEST_ARCHITECTURE=gfx1010 \
+      -DLIBC_GPU_LOADER_EXECUTABLE=$HOME/GPU/amdhsa_loader \
       -GNinja
 
 $BUILDTOOL
 
+# make check is currently raising 'user defined signal 2' and killing everything
 set +e
-$BUILDTOOL check-all 
+# $BUILDTOOL check-all 
 set -e
 $BUILDTOOL install # often want install to succeed even if tests dont
 
@@ -268,16 +270,16 @@ make -j `nproc` && make -j `nproc` install
 
 
 # HSA has just put dangling links in the build tree. That upsets anything that tries to use it.
-rm $BDIR/llvm/lib/libhsa-runtime64*
+rm -f $BDIR/llvm/lib/libhsa-runtime64*
 cd $BDIR/llvm/lib
-ln -s $IDIR/lib/libhsa-runtime64.so .
+ln -s $IDIR/lib/libhsa-runtime64.so.1 $BDIR/llvm/lib/libhsa-runtime64.so
 cd -
 
 # libc hardcodes the wrong path to hsa, try to hack around that
 cd $IDIR/include/hsa
 mkdir hsa
 cd hsa
-ln -s ../* .
+ln -s ../*.h .
 rm hsa
 
 
