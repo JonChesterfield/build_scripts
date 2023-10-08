@@ -280,8 +280,6 @@ cd $IDIR/include/hsa
 mkdir hsa
 cd hsa
 ln -s ../*.h .
-rm hsa
-
 
 
 # libomptarget tests no longer use LD_LIBRARY_PATH, put a link to libhsa next to the plugin
