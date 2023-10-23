@@ -65,20 +65,23 @@ if [[ -d "ROCT-Thunk-Interface" ]]
 then
     echo "Using existing roct"
 else
-    git clone https://github.com/RadeonOpenCompute/ROCT-Thunk-Interface.git -b roc-5.2.x
+    # roc for 5.4, rocm for 5.7
+    git clone https://github.com/RadeonOpenCompute/ROCT-Thunk-Interface.git -b rocm-5.7.x
 fi
 
 if [[ -d "ROCR-Runtime" ]]
 then
     echo "Using existing rocr"
 else
-    git clone https://github.com/RadeonOpenCompute/ROCR-Runtime.git -b rocm-5.2.x
+    git clone https://github.com/RadeonOpenCompute/ROCR-Runtime.git -b rocm-5.7.x
     # This can be disabled by environment variable, but LLVM's testing does not pass that
     # environment variable along. So clobber it in the source directly.
     sed -i 's/os::GetEnvVar("HSA_IGNORE_SRAMECC_MISREPORT")/"1"/' ROCR-Runtime/src/core/util/flag.h
 
     # patch enum
     cd ROCR-Runtime
+    if 0
+    then 
     cat <<'EOF' | git apply
 diff --git a/src/inc/hsa.h b/src/inc/hsa.h
 index fe1facc..9d6cf04 100644
@@ -104,6 +107,7 @@ index fe1facc..9d6cf04 100644
  } hsa_agent_info_t;
  
 EOF
+    fi
     cd --
 fi
 
@@ -117,20 +121,20 @@ else
     git clone https://github.com/RadeonOpenCompute/ROCm-Device-Libs.git -b amd-stg-open
     #sed -i 's$add_subdirectory(opencl)$# add_subdirectory(opencl)$g' ROCm-Device-Libs/CMakeLists.txt
     #sed -i 's$sys::fs::F_None$sys::fs::OF_None$' ROCm-Device-Libs/utils/prepare-builtins/prepare-builtins.cpp
-    rm -f ROCm-Device-Libs/ockl/src/dots.cl # doesn't build
+    # rm -f ROCm-Device-Libs/ockl/src/dots.cl # doesn't build
 
-    rm -f ROCm-Device-Libs/ockl/src/gaaf.cl # doesn't build
+    # rm -f ROCm-Device-Libs/ockl/src/gaaf.cl # doesn't build
 
     #rm -rf ROCm-Device-Libs/hc # several files fail with error: Opaque pointers are only supported in -opaque-pointers mode
 
 fi
 
-if [[ -d "dynamic_hsa" ]]
-then
-    echo "Using existing dynamic hsa"
-else
-    git clone https://github.com/JonChesterfield/dynamic_hsa.git
-fi
+#if [[ -d "dynamic_hsa" ]]
+#then
+#    echo "Using existing dynamic hsa"
+#else
+#    git clone https://github.com/JonChesterfield/dynamic_hsa.git
+#fi
 
 
 # amd-stg-open cmake assumes it is called this and up one level
@@ -298,10 +302,9 @@ fi
 
 # device libs is not building again. to hell with it
 
-mkdir -p $IDIR/amdgcn/bitcode
-touch $IDIR/amdgcn/bitcode/opencl.bc
-
-exit 0
+# mkdir -p $IDIR/amdgcn/bitcode
+# touch $IDIR/amdgcn/bitcode/opencl.bc
+# exit 0
 
 # device libs needs a recent llvm and doesn't honour cmake configuration
 # it will use whatever clang find_package returns, and one place that looks is the path
