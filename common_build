@@ -187,8 +187,8 @@ cd $BDIR
 rm -rf llvm && mkdir llvm && cd llvm
 
 # Create a HSA instance of sorts
-mkdir -p include
-cp -r $SDIR/dynamic_hsa/include/* include/
+# mkdir -p include
+# cp -r $SDIR/dynamic_hsa/include/* include/
 
 # libc checks CMAKE_INSTALL_PREFIX looking for hsa, pretend there is one there
 #cd $IDIR
