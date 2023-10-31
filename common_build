@@ -236,8 +236,8 @@ cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
       -DLIBOMPTARGET_FORCE_AMDGPU_TESTS=TRUE \
       -DLLVM_LIBC_FULL_BUILD=ON \
       -DLIBC_GPU_BUILD=ON \
-      -DLIBC_GPU_ARCHITECTURES=gfx1010 \
-      -DLIBC_GPU_TEST_ARCHITECTURE=gfx1010 \
+      -DLIBC_GPU_ARCHITECTURES=gfx1030 \
+      -DLIBC_GPU_TEST_ARCHITECTURE=gfx1030 \
       -DLIBC_GPU_LOADER_EXECUTABLE=$HOME/GPU/amdhsa_loader \
       -GNinja
 
@@ -276,28 +276,28 @@ make -j `nproc` && make -j `nproc` install
 # HSA has just put dangling links in the build tree. That upsets anything that tries to use it.
 rm -f $BDIR/llvm/lib/libhsa-runtime64*
 cd $BDIR/llvm/lib
-ln -s $IDIR/lib/libhsa-runtime64.so.1 $BDIR/llvm/lib/libhsa-runtime64.so
+cp $IDIR/lib/libhsa-runtime64.so.1.* $BDIR/llvm/lib/libhsa-runtime64.so
 cd -
 
 # libc hardcodes the wrong path to hsa, try to hack around that
-cd $IDIR/include/hsa
-mkdir hsa
-cd hsa
-ln -s ../*.h .
+#cd $IDIR/include/hsa
+#mkdir hsa
+#cd hsa
+#ln -s ../*.h .
 
 
 # libomptarget tests no longer use LD_LIBRARY_PATH, put a link to libhsa next to the plugin
-
-FROM=$(find $BDIR -iname libhsa-runtime64.so)
-LIBOMP=$(find $BDIR -iname libomptarget.rtl.amdgpu.so)
-if [[ -e $LIBOMP ]]
-then
-echo "Link hsa $FROM to dirname $LIBOMP"
-TO=$(dirname $LIBOMP)
-ln -sf $FROM $TO
-else
-echo "Can't find libomptarget.rtl.amdgpu.so, don't try to ln hsa"
-fi
+# this might be part of the symlink breakage
+#FROM=$(find $BDIR -iname libhsa-runtime64.so)
+#LIBOMP=$(find $BDIR -iname libomptarget.rtl.amdgpu.so)
+#if [[ -e $LIBOMP ]]
+#then
+#echo "Link hsa $FROM to dirname $LIBOMP"
+#TO=$(dirname $LIBOMP)
+#ln -sf $FROM $TO
+#else
+#echo "Can't find libomptarget.rtl.amdgpu.so, don't try to ln hsa"
+#fi
 
 
 # device libs is not building again. to hell with it
