@@ -6,6 +6,21 @@ set -e
 
 ROOT=$(realpath $(dirname $0))
 
+
+# Check a couple of other places that might be used for work dirs
+if [[ -d /scratch/$USER ]]
+then
+    ROOT=/scratch/$USER
+fi
+
+
+if [[ -d /work/$USER ]]
+then
+    ROOT=/work/$USER
+fi
+
+echo "Using root $ROOT"
+
 # -- OPENMP AMD OFFLOADING --
 # This script will attempt to buid an LLVM compiler capable of OpenMP offloading
 # to AMD GPUs. This will pull in the necessary dependencies without requiring a
@@ -30,7 +45,7 @@ export TARGETS="all"
 # libclc, libcxx, libcxxabi, libunwind, lld, lldb, openmp, parallel-libs,
 # polly, pstl
 export PROJECTS="clang;clang-tools-extra;lld"
-export RUNTIMES="libc;libcxx;libcxxabi;openmp;offload;libunwind"
+export RUNTIMES="libcxx;libcxxabi;openmp;offload;libunwind" # drop host libc as failing to build
 
 # -- INSTALLATION DIRECTORY --
 # where the compiler and libraries will be installed
