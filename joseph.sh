@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # As suggested by Joseph, before hacking besides adding this comment
+# Different root dir setup, hack out nvptx and ccache
 
 set -e
 
@@ -64,29 +65,25 @@ export GCC_DIR=${GCC%/bin/gcc}
 # Limit the number of threads or leave empty to use all threads
 export THREADS=
 
-export USE_CCACHE=ON
+export USE_CCACHE=OFF
 
 CMAKE_OPTIONS=" \
     -DLLVM_TARGETS_TO_BUILD=${TARGETS}                                         \
     -DLLVM_ENABLE_PROJECTS=${PROJECTS}                                         \
     -DLLVM_ENABLE_RUNTIMES=${RUNTIMES}                                         \
-    -DCMAKE_C_COMPILER_LAUNCHER=ccache                                         \
-    -DCMAKE_CXX_COMPILER_LAUNCHER=ccache                                       \
+    -DCMAKE_C_COMPILER=/usr/bin/clang-16                                       \
+    -DCMAKE_CXX_COMPILER=/usr/bin/clang++-16                                   \
     -DLLVM_ENABLE_ASSERTIONS=ON                                                \
     -DLIBOMPTARGET_ENABLE_DEBUG=ON                                             \
     -DLIBOMPTARGET_DEVICE_ARCHITECTURES=gfx1030;gfx90a;sm_89                   \
     -DLIBOMPTARGET_DLOPEN_PLUGINS=''                                           \
-    -DPTXAS_EXECUTABLE=/opt/cuda/bin/ptxas                                     \
     -DLLVM_USE_LINKER=lld                                                      \
     -DCLANG_DEFAULT_LINKER=lld                                                 \
-    -DRUNTIMES_nvptx64-nvidia-cuda_CACHE_FILES=${LLVM_SRC}/../libcxx/cmake/caches/NVPTX.cmake \
     -DRUNTIMES_amdgcn-amd-amdhsa_CACHE_FILES=${LLVM_SRC}/../libcxx/cmake/caches/AMDGPU.cmake \
-    -DRUNTIMES_nvptx64-nvidia-cuda_LLVM_ENABLE_RUNTIMES=compiler-rt;libc;libcxx;libcxxabi;offload \
     -DRUNTIMES_amdgcn-amd-amdhsa_LLVM_ENABLE_RUNTIMES=compiler-rt;libc;libcxx;libcxxabi;offload \
-    -DLLVM_RUNTIME_TARGETS=default;amdgcn-amd-amdhsa;nvptx64-nvidia-cuda       \
+    -DLLVM_RUNTIME_TARGETS=default;amdgcn-amd-amdhsa       \
     -DLLVM_OPTIMIZED_TABLEGEN=ON                                               \
     -DBUILD_SHARED_LIBS=ON                                                     \
-    -DLLVM_CCACHE_BUILD=${USE_CCACHE}                                          \
     -DLLVM_APPEND_VC_REV=OFF"
 
 echo "Building LLVM in ${BUILD_DIR} and installing to ${PREFIX}"
