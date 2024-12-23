@@ -177,7 +177,7 @@ chmod +x $IDIR/bin/mygpu
 
 # todo: actually compute link jobs, possibly based on available ram
 #  -DLLVM_PARALLEL_LINK_JOBS=$(( ($(nproc) + 7)/8 ))
-CMAKE_COMMON="-DCMAKE_C_COMPILER=`which clang` -DCMAKE_CXX_COMPILER=`which clang++` -DCMAKE_INSTALL_PREFIX=$IDIR -DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF -DLLVM_ENABLE_ASSERTIONS=On -DCMAKE_VERBOSE_MAKEFILE=1 "
+CMAKE_COMMON="-DCMAKE_C_COMPILER=`which gcc` -DCMAKE_CXX_COMPILER=`which g++` -DCMAKE_INSTALL_PREFIX=$IDIR -DLLVM_ENABLE_ASSERTIONS=On -DCMAKE_VERBOSE_MAKEFILE=1 -DLLVM_PARALLEL_LINK_JOBS=8"
 
 
 
@@ -219,27 +219,18 @@ fi
 #      -DLIBOMPTARGET_FORCE_DLOPEN_LIBCUDA=TRUE \
 #      -DDEVICELIBS_ROOT=$SDIR/ROCm-Device-Libs probably don't need this
 
+RUNTIMES="libcxx;libcxxabi;libunwind" # drop host libc as failing to build
+
 cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
-      -DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt" \
-      -DLLVM_ENABLE_RUNTIMES="libc;openmp" \
+      -DLLVM_ENABLE_PROJECTS="clang;lld" \
+      -DLLVM_ENABLE_RUNTIMES=$RUNTIMES                                         \
       -DLLVM_ENABLE_ZLIB=OFF \
       -DLLVM_ENABLE_ZSTD=OFF \
       -DLLVM_ENABLE_TERMINFO=OFF \
-      -DOPENMP_ENABLE_LIBOMPTARGET_HSA=TRUE \
-      -DENABLE_AMDGPU_ARCH_TOOL=TRUE \
-      $CUDA \
-      -DLIBOMPTARGET_FORCE_DLOPEN_LIBCUDA=FALSE \
-      -DLIBOMPTARGET_FORCE_DLOPEN_LIBHSA=FALSE \
-      -DLIBOMPTARGET_BUILD_NVPTX_BCLIB=TRUE \
-      -DLIBOMPTARGET_BUILD_AMDGPU_BCLIB=TRUE \
-      -DLIBOMPTARGET_BUILD_CUDA_PLUGIN=TRUE \
-      -DLIBOMPTARGET_BUILD_AMDGPU_PLUGIN=TRUE \
-      -DLIBOMPTARGET_FORCE_AMDGPU_TESTS=TRUE \
-      -DLLVM_LIBC_FULL_BUILD=ON \
-      -DLIBC_GPU_BUILD=ON \
-      -DLIBC_GPU_ARCHITECTURES=gfx1030 \
-      -DLIBC_GPU_TEST_ARCHITECTURE=gfx1030 \
-      -DLIBC_GPU_LOADER_EXECUTABLE=$HOME/GPU/amdhsa_loader \
+      -DRUNTIMES_amdgcn-amd-amdhsa_CACHE_FILES=$SDIR/libcxx/cmake/caches/AMDGPU.cmake \
+      -DRUNTIMES_amdgcn-amd-amdhsa_LLVM_ENABLE_RUNTIMES="libc" \
+      -DRUNTIMES_amdgcn-amd-amdhsa_LIBC_GPU_TEST_ARCHITECTURE="gfx90c" \
+      -DLLVM_RUNTIME_TARGETS="default;amdgcn-amd-amdhsa"       \
       -GNinja
 
 $BUILDTOOL
@@ -249,6 +240,8 @@ set +e
 # $BUILDTOOL check-all 
 set -e
 $BUILDTOOL install # often want install to succeed even if tests dont
+
+exit 0
 
 # HSA contains cmake for trap_handler which doesn't honour compiler flags and expects
 # a prefix path with /llvm on it, despite llvm not installing under a tree that looks like that
