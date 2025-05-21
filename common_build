@@ -177,7 +177,9 @@ chmod +x $IDIR/bin/mygpu
 
 # todo: actually compute link jobs, possibly based on available ram
 #  -DLLVM_PARALLEL_LINK_JOBS=$(( ($(nproc) + 7)/8 ))
-CMAKE_COMMON="-DCMAKE_C_COMPILER=`which gcc` -DCMAKE_CXX_COMPILER=`which g++` -DCMAKE_INSTALL_PREFIX=$IDIR -DLLVM_ENABLE_ASSERTIONS=On -DCMAKE_VERBOSE_MAKEFILE=1 -DLLVM_PARALLEL_LINK_JOBS=8"
+CMAKE_COMMON="-DCMAKE_C_COMPILER=`which gcc` -DCMAKE_CXX_COMPILER=`which g++` -DCMAKE_INSTALL_PREFIX=$IDIR -DLLVM_ENABLE_ASSERTIONS=On -DCMAKE_VERBOSE_MAKEFILE=1 "
+
+# -DLLVM_PARALLEL_LINK_JOBS=8"
 
 
 
@@ -221,16 +223,21 @@ fi
 
 RUNTIMES="libcxx;libcxxabi;libunwind" # drop host libc as failing to build
 
+# Hoping autodetect works, otherwise something like:
+#  -DRUNTIMES_amdgcn-amd-amdhsa_LIBC_GPU_TEST_ARCHITECTURE="gfx90c" \
+
+#      -DLLVM_ENABLE_PROJECTS="clang;lld"         \
+#      -DLLVM_TARGETS_TO_BUILD="X86;AMDGPU"       \
+#     -DLLVM_ENABLE_RUNTIMES=$RUNTIMES                                         \
+#      -DRUNTIMES_amdgcn-amd-amdhsa_CACHE_FILES=$SDIR/libcxx/cmake/caches/AMDGPU.cmake \
+#      -DRUNTIMES_amdgcn-amd-amdhsa_LLVM_ENABLE_RUNTIMES="libc" \
+#      -DLLVM_RUNTIME_TARGETS="default;amdgcn-amd-amdhsa"       \
+ 
 cmake $SDIR/llvm $CMAKE_COMMON $CMAKE_BUILD_TYPE \
-      -DLLVM_ENABLE_PROJECTS="clang;lld" \
-      -DLLVM_ENABLE_RUNTIMES=$RUNTIMES                                         \
+      -C $SDIR/offload/cmake/caches/Offload.cmake \
       -DLLVM_ENABLE_ZLIB=OFF \
       -DLLVM_ENABLE_ZSTD=OFF \
       -DLLVM_ENABLE_TERMINFO=OFF \
-      -DRUNTIMES_amdgcn-amd-amdhsa_CACHE_FILES=$SDIR/libcxx/cmake/caches/AMDGPU.cmake \
-      -DRUNTIMES_amdgcn-amd-amdhsa_LLVM_ENABLE_RUNTIMES="libc" \
-      -DRUNTIMES_amdgcn-amd-amdhsa_LIBC_GPU_TEST_ARCHITECTURE="gfx90c" \
-      -DLLVM_RUNTIME_TARGETS="default;amdgcn-amd-amdhsa"       \
       -GNinja
 
 $BUILDTOOL
